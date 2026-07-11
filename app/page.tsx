@@ -20,22 +20,24 @@ export default function Home() {
   async function submit(e?: React.FormEvent) {
     e?.preventDefault(); const t = text.trim(); if (!t || busy) return;
     setBusy(true); setNotice("");
-    if (t.endsWith("?")) {
-      const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: t, transactions: items }) });
-      const d = await r.json(); setNotice(d.answer || d.error || "Something went wrong.");
-    } else {
-      const r = await fetch("/api/parse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) });
-      const d = await r.json();
-      if (d.transaction) {
-        const { data, error } = await client.from("transactions").insert(d.transaction).select().single();
-        if (!error && data) { setItems(old => [data as Transaction, ...old]); setText(""); setNotice(`Added: ${d.transaction.description} — ${money.format(d.transaction.amount)}`); }
-        else setNotice("Couldn't save that. Check your internet and try again.");
-      } else setNotice(d.error || "Couldn't understand that. Try: samosa 15");
-    }
-    setBusy(false);
+    try {
+      if (t.endsWith("?")) {
+        const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: t, transactions: items }) });
+        const d = await r.json(); setNotice(d.answer || d.error || "Something went wrong.");
+      } else {
+        const r = await fetch("/api/parse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) });
+        const d = await r.json();
+        if (d.transaction) {
+          const { data, error } = await client.from("transactions").insert(d.transaction).select().single();
+          if (!error && data) { setItems(old => [data as Transaction, ...old]); setText(""); setNotice(`Added: ${d.transaction.description} — ${money.format(d.transaction.amount)}`); }
+          else setNotice("Couldn't save that. Check your internet and try again.");
+        } else setNotice(d.error || "Couldn't understand that. Try: samosa 15");
+      }
+    } catch { setNotice("No connection. Check your internet and try again."); }
+    finally { setBusy(false); }
   }
-  async function saveEdit(t: Transaction) { setItems(xs => xs.map(x => x.id === t.id ? t : x)); setEditing(null); await client.from("transactions").update({ transaction_date: t.transaction_date, description: t.description, category: t.category, type: t.type, amount: t.amount, note: t.note }).eq("id", t.id); }
-  async function remove(id: string) { setItems(xs => xs.filter(x => x.id !== id)); setEditing(null); await client.from("transactions").delete().eq("id", id); }
+  async function saveEdit(t: Transaction) { setItems(xs => xs.map(x => x.id === t.id ? t : x)); setEditing(null); const { error } = await client.from("transactions").update({ transaction_date: t.transaction_date, description: t.description, category: t.category, type: t.type, amount: t.amount, note: t.note }).eq("id", t.id); if (error) { setNotice("That edit didn't save — showing the sheet as it is on the server."); load(); } }
+  async function remove(id: string) { setItems(xs => xs.filter(x => x.id !== id)); setEditing(null); const { error } = await client.from("transactions").delete().eq("id", id); if (error) { setNotice("Couldn't delete that one — showing the sheet as it is on the server."); load(); } }
   function dictate() { const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; if (!Speech) return alert("Voice input is not available in this browser. Try Chrome on Android."); const recognition = new Speech(); recognition.lang = "en-IN"; recognition.onresult = (event: SpeechRecognitionEvent) => setText(event.results[0][0].transcript); recognition.start(); }
 
   return <main className="app">

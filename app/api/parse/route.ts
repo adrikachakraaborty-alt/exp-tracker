@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { categories } from "@/lib/types";
 
+export const maxDuration = 30;
+
 // Turns free text like "ate a samosa and paid 15rs" into a transaction.
 // Uses the NVIDIA model when available; falls back to a simple number grab so
 // the bar still works if the AI service is down or unconfigured.
@@ -10,7 +12,12 @@ export async function POST(request: Request) {
   const today = new Date().toISOString().slice(0, 10);
 
   const fallback = () => {
-    const amount = Number((text.replace(/,/g, "").match(/\d+(?:\.\d+)?/) || [0])[0]);
+    // Prefer the number next to a currency word ("paid 15rs", "rs 15"),
+    // otherwise the largest number, so "2 samosas for 30rs" logs 30, not 2.
+    const clean = text.replace(/,/g, "");
+    const near = clean.match(/(?:rs\.?|₹|inr|rupees?)\s*(\d+(?:\.\d+)?)/i) || clean.match(/(\d+(?:\.\d+)?)\s*(?:rs\.?|₹|inr|rupees?|\/-)/i);
+    const all = clean.match(/\d+(?:\.\d+)?/g) || [];
+    const amount = near ? Number(near[1]) : Math.max(0, ...all.map(Number));
     if (!amount) return null;
     const income = /\b(got|received|salary|earned|income|credited|refund|won)\b/i.test(text);
     return { description: text.trim().slice(0, 160), category: "Other", type: income ? ("income" as const) : ("expense" as const), amount, transaction_date: today, note: null };
