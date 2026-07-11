@@ -1,28 +1,89 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Bot, LayoutGrid, Mic, Plus, Search, Settings, Trash2, WalletCards, X } from "lucide-react";
+import { Loader2, Mic, Search, Send, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { categories, Transaction } from "@/lib/types";
 
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
-const blank = (): Omit<Transaction, "id"> => ({ transaction_date: new Date().toISOString().slice(0, 10), description: "", category: "Other", type: "expense", amount: 0, note: "" });
+const day = (iso: string) => { const today = new Date().toISOString().slice(0, 10); const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10); if (iso === today) return "Today"; if (iso === yesterday) return "Yesterday"; return new Date(iso + "T00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" }); };
 
 export default function Home() {
   const [items, setItems] = useState<Transaction[]>([]); const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState(""); const [modal, setModal] = useState(false); const [draft, setDraft] = useState(blank()); const [ai, setAi] = useState(false); const [answer, setAnswer] = useState(""); const [question, setQuestion] = useState(""); const [thinking, setThinking] = useState(false);
+  const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState("");
+  const [query, setQuery] = useState(""); const [editing, setEditing] = useState<Transaction | null>(null);
   const client = useMemo(() => supabase(), []);
   async function load() { setLoading(true); const { data } = await client.from("transactions").select("*").order("transaction_date", { ascending: false }).order("created_at", { ascending: false }); setItems((data as Transaction[]) || []); setLoading(false); }
   useEffect(() => { load(); }, [client]);
   const visible = items.filter(x => [x.description, x.category, x.note].join(" ").toLowerCase().includes(query.toLowerCase()));
-  const income = items.filter(x => x.type === "income").reduce((s,x) => s + Number(x.amount), 0); const expense = items.filter(x => x.type === "expense").reduce((s,x) => s + Number(x.amount), 0);
-  async function save(e: React.FormEvent) { e.preventDefault(); if (!draft.description.trim() || !draft.amount) return; const { data, error } = await client.from("transactions").insert(draft).select().single(); if (!error && data) setItems(old => [data as Transaction, ...old]); setModal(false); }
-  async function update(id: string, field: keyof Transaction, value: string) { const updated = field === "amount" ? Number(value) : value; setItems(xs => xs.map(x => x.id === id ? { ...x, [field]: updated } : x)); await client.from("transactions").update({ [field]: updated }).eq("id", id); }
-  async function remove(id: string) { setItems(xs => xs.filter(x => x.id !== id)); await client.from("transactions").delete().eq("id", id); }
-  function dictate() { const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; if (!Speech) return alert("Voice input is not available in this browser. Try Chrome on Android."); const recognition = new Speech(); recognition.lang = "en-IN"; recognition.onresult = (event: SpeechRecognitionEvent) => setDraft(d => ({ ...d, description: event.results[0][0].transcript })); recognition.start(); }
-  async function ask() { if (!question.trim()) return; setThinking(true); setAnswer(""); const result = await fetch("/api/ai", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({ prompt: question, transactions: items }) }); const data = await result.json(); setAnswer(data.answer || data.error || "Something went wrong."); setThinking(false); }
-  return <main className="shell"><aside className="sidebar"><div className="brand"><i>◒</i> ledgerly</div><nav className="nav"><button className="active"><LayoutGrid size={17}/><span>Transactions</span></button><button onClick={() => setAi(true)}><Bot size={17}/><span>Ask Ledgerly</span></button><button><WalletCards size={17}/><span>Accounts</span></button><button><Settings size={17}/><span>Settings</span></button></nav><div className="avatar"><span>Y</span><div>Your personal ledger</div></div></aside><section className="main"><header className="topbar"><div><div className="eyebrow">Personal finance</div><h1>Your money, clearly.</h1></div><div className="top-actions"><button className="primary" onClick={() => { setDraft(blank()); setModal(true); }}><Plus size={17}/> Add transaction</button></div></header><div className="summary"><Stat label="Balance" amount={income-expense} tone="balance" detail="All time"/><Stat label="Income" amount={income} detail="Money in"/><Stat label="Spent" amount={expense} detail="Money out"/><Stat label="Transactions" amount={items.length} detail="All time" plain/></div><section className="workspace"><div className="sheet-head"><div><h2>Transactions</h2><p>Your editable expense spreadsheet.</p></div><button className="ghost" onClick={() => setAi(true)}><Bot size={16}/> Ask AI</button></div><div className="toolbar"><Search size={16} color="#71847b"/><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search your entries"/><span className="count">{visible.length} rows</span></div><div className="table-wrap"><table className="sheet"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th>Note</th><th/></tr></thead><tbody>{visible.map(row => <tr key={row.id}><td><input type="date" value={row.transaction_date} onChange={e=>update(row.id,"transaction_date",e.target.value)}/></td><td><input value={row.description} onChange={e=>update(row.id,"description",e.target.value)}/></td><td><select value={row.category} onChange={e=>update(row.id,"category",e.target.value)}>{categories.map(c=><option key={c}>{c}</option>)}</select></td><td><select value={row.type} onChange={e=>update(row.id,"type",e.target.value)}><option value="expense">Expense</option><option value="income">Income</option></select></td><td className="amount-cell"><input type="number" min="0" value={row.amount} onChange={e=>update(row.id,"amount",e.target.value)}/></td><td><input value={row.note || ""} onChange={e=>update(row.id,"note",e.target.value)} placeholder="—"/></td><td><button aria-label="Delete transaction" className="delete" onClick={()=>remove(row.id)}><Trash2 size={16}/></button></td></tr>)}</tbody></table>{!loading && visible.length === 0 && <div style={{padding: "28px", textAlign:"center", color:"#71847b"}}>No transactions yet. Add your first one.</div>}</div><button className="add-row" onClick={()=>{setDraft(blank());setModal(true)}}>＋ Add a row</button></section><section className="assistant-panel"><div className="spark"><Bot size={20}/></div><div><strong>Need a second pair of eyes?</strong><p>Ask about your spending patterns or this month&apos;s budget.</p></div><button className="ghost" onClick={()=>setAi(true)}>Ask Ledgerly</button></section></section>{modal && <TransactionModal draft={draft} setDraft={setDraft} onClose={()=>setModal(false)} onSave={save} dictate={dictate}/>} {ai && <AiModal close={()=>setAi(false)} question={question} setQuestion={setQuestion} ask={ask} answer={answer} thinking={thinking}/>}</main>;
+  const income = items.filter(x => x.type === "income").reduce((s, x) => s + Number(x.amount), 0); const expense = items.filter(x => x.type === "expense").reduce((s, x) => s + Number(x.amount), 0);
+
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault(); const t = text.trim(); if (!t || busy) return;
+    setBusy(true); setNotice("");
+    if (t.endsWith("?")) {
+      const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: t, transactions: items }) });
+      const d = await r.json(); setNotice(d.answer || d.error || "Something went wrong.");
+    } else {
+      const r = await fetch("/api/parse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) });
+      const d = await r.json();
+      if (d.transaction) {
+        const { data, error } = await client.from("transactions").insert(d.transaction).select().single();
+        if (!error && data) { setItems(old => [data as Transaction, ...old]); setText(""); setNotice(`Added: ${d.transaction.description} — ${money.format(d.transaction.amount)}`); }
+        else setNotice("Couldn't save that. Check your internet and try again.");
+      } else setNotice(d.error || "Couldn't understand that. Try: samosa 15");
+    }
+    setBusy(false);
+  }
+  async function saveEdit(t: Transaction) { setItems(xs => xs.map(x => x.id === t.id ? t : x)); setEditing(null); await client.from("transactions").update({ transaction_date: t.transaction_date, description: t.description, category: t.category, type: t.type, amount: t.amount, note: t.note }).eq("id", t.id); }
+  async function remove(id: string) { setItems(xs => xs.filter(x => x.id !== id)); setEditing(null); await client.from("transactions").delete().eq("id", id); }
+  function dictate() { const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; if (!Speech) return alert("Voice input is not available in this browser. Try Chrome on Android."); const recognition = new Speech(); recognition.lang = "en-IN"; recognition.onresult = (event: SpeechRecognitionEvent) => setText(event.results[0][0].transcript); recognition.start(); }
+
+  return <main className="app">
+    <header className="hero">
+      <div className="brand"><i>◒</i> ledgerly</div>
+      <div className="balance-label">Balance</div>
+      <div className="balance">{money.format(income - expense)}</div>
+      <div className="inout"><span className="in">↓ {money.format(income)} in</span><span className="out">↑ {money.format(expense)} out</span></div>
+    </header>
+    <form className="smartbar" onSubmit={submit}>
+      <input value={text} onChange={e => setText(e.target.value)} placeholder="Type it: ate a samosa, paid 15rs" disabled={busy} />
+      <button type="button" className="round" title="Speak" onClick={dictate}><Mic size={18} /></button>
+      <button className="round go" disabled={busy || !text.trim()} title="Add">{busy ? <Loader2 size={18} className="spin" /> : <Send size={18} />}</button>
+    </form>
+    <p className="hint">Just describe it — the row gets added for you. End with “?” to ask about your spending.</p>
+    {notice && <div className="notice">{notice}<button onClick={() => setNotice("")}><X size={14} /></button></div>}
+    <section className="list">
+      <div className="list-head">
+        <Search size={15} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search" />
+      </div>
+      {visible.map(row => <button className="row" key={row.id} onClick={() => setEditing(row)}>
+        <div className="row-main"><span className="desc">{row.description}</span><span className="meta">{day(row.transaction_date)} · {row.category}</span></div>
+        <span className={`amt ${row.type}`}>{row.type === "income" ? "+" : "−"}{money.format(Number(row.amount))}</span>
+      </button>)}
+      {!loading && visible.length === 0 && <div className="empty">{items.length === 0 ? "Nothing yet. Type your first expense above." : "No matches."}</div>}
+      {loading && <div className="empty">Loading…</div>}
+    </section>
+    {editing && <EditModal item={editing} onClose={() => setEditing(null)} onSave={saveEdit} onDelete={remove} />}
+  </main>;
 }
 
-function Stat({label,amount,tone,detail,plain}:{label:string;amount:number;tone?:string;detail:string;plain?:boolean}) { return <div className={`card ${tone||""}`}><div className="label">{label}<span>•••</span></div><div className="amount">{plain ? amount : money.format(amount)}</div><div className="change">{detail}</div></div>; }
-function TransactionModal({draft,setDraft,onClose,onSave,dictate}:{draft:Omit<Transaction,"id">;setDraft:React.Dispatch<React.SetStateAction<Omit<Transaction,"id">>>;onClose:()=>void;onSave:(e:React.FormEvent)=>void;dictate:()=>void}) { const change=(field:keyof typeof draft,value:string)=>setDraft(d=>({...d,[field]:field==="amount"?Number(value):value})); return <div className="modal-back"><form className="modal" onSubmit={onSave}><button type="button" className="delete" style={{float:"right"}} onClick={onClose}><X/></button><h2>Add transaction</h2><p>Capture it now; everything remains editable in the sheet.</p><div className="form-grid"><label className="field"><span>Date</span><input type="date" value={draft.transaction_date} onChange={e=>change("transaction_date",e.target.value)}/></label><label className="field"><span>Type</span><select value={draft.type} onChange={e=>change("type",e.target.value)}><option value="expense">Expense</option><option value="income">Income</option></select></label><label className="field full"><span>Description</span><div style={{display:"flex",gap:7}}><input required style={{flex:1}} autoFocus value={draft.description} onChange={e=>change("description",e.target.value)} placeholder="e.g. Dinner at Koshy’s"/><button type="button" className="ghost" title="Speak description" onClick={dictate}><Mic size={17}/></button></div></label><label className="field"><span>Category</span><select value={draft.category} onChange={e=>change("category",e.target.value)}>{categories.map(c=><option key={c}>{c}</option>)}</select></label><label className="field"><span>Amount (₹)</span><input required type="number" min="1" step="0.01" value={draft.amount||""} onChange={e=>change("amount",e.target.value)} placeholder="0"/></label><label className="field full"><span>Note (optional)</span><input value={draft.note||""} onChange={e=>change("note",e.target.value)} placeholder="Anything useful to remember"/></label></div><div className="modal-actions"><button type="button" className="ghost" onClick={onClose}>Cancel</button><button className="primary">Save transaction</button></div></form></div>; }
-function AiModal({close,question,setQuestion,ask,answer,thinking}:{close:()=>void;question:string;setQuestion:(x:string)=>void;ask:()=>void;answer:string;thinking:boolean}) { return <div className="modal-back"><div className="modal"><button className="delete" style={{float:"right"}} onClick={close}><X/></button><h2>Ask Ledgerly</h2><p>It sees your current transaction sheet, then gives concise guidance.</p><label className="field"><span>Your question</span><input autoFocus value={question} onChange={e=>setQuestion(e.target.value)} onKeyDown={e=>e.key==="Enter"&&ask()} placeholder="Where did I spend the most?"/></label><div className="modal-actions"><button className="primary" onClick={ask} disabled={thinking}>{thinking?"Thinking…":"Ask AI"}</button></div>{answer && <div className="ai-output">{answer}</div>}</div></div>; }
+function EditModal({ item, onClose, onSave, onDelete }: { item: Transaction; onClose: () => void; onSave: (t: Transaction) => void; onDelete: (id: string) => void }) {
+  const [draft, setDraft] = useState(item);
+  const change = (field: keyof Transaction, value: string) => setDraft(d => ({ ...d, [field]: field === "amount" ? Number(value) : value }));
+  return <div className="modal-back" onClick={onClose}><form className="modal" onClick={e => e.stopPropagation()} onSubmit={e => { e.preventDefault(); if (draft.description.trim() && draft.amount > 0) onSave(draft); }}>
+    <h2>Edit</h2>
+    <div className="form-grid">
+      <label className="field"><span>Date</span><input type="date" value={draft.transaction_date} onChange={e => change("transaction_date", e.target.value)} /></label>
+      <label className="field"><span>Type</span><select value={draft.type} onChange={e => change("type", e.target.value)}><option value="expense">Expense</option><option value="income">Income</option></select></label>
+      <label className="field full"><span>Description</span><input required value={draft.description} onChange={e => change("description", e.target.value)} /></label>
+      <label className="field"><span>Category</span><select value={draft.category} onChange={e => change("category", e.target.value)}>{categories.map(c => <option key={c}>{c}</option>)}</select></label>
+      <label className="field"><span>Amount (₹)</span><input required type="number" min="1" step="0.01" value={draft.amount || ""} onChange={e => change("amount", e.target.value)} /></label>
+      <label className="field full"><span>Note</span><input value={draft.note || ""} onChange={e => change("note", e.target.value)} placeholder="Optional" /></label>
+    </div>
+    <div className="modal-actions">
+      <button type="button" className="danger" onClick={() => onDelete(draft.id)}><Trash2 size={15} /> Delete</button>
+      <button type="button" className="ghost" onClick={onClose}>Cancel</button>
+      <button className="primary">Save</button>
+    </div>
+  </form></div>;
+}
