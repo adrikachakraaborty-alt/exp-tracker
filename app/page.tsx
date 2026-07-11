@@ -23,10 +23,10 @@ export default function Home() {
     try {
       if (t.endsWith("?")) {
         const r = await fetch("/api/ai", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: t, transactions: items }) });
-        const d = await r.json(); setNotice(d.answer || d.error || "Something went wrong.");
+        const d = await r.json().catch(() => ({})); setNotice(d.answer || d.error || "The AI is busy right now — try again in a minute.");
       } else {
         const r = await fetch("/api/parse", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: t }) });
-        const d = await r.json();
+        const d = await r.json().catch(() => ({}));
         if (d.transaction) {
           const { data, error } = await client.from("transactions").insert(d.transaction).select().single();
           if (!error && data) { setItems(old => [data as Transaction, ...old]); setText(""); setNotice(`Added: ${d.transaction.description} — ${money.format(d.transaction.amount)}`); }
