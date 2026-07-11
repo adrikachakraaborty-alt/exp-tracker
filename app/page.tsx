@@ -53,6 +53,7 @@ export default function Home() {
   function dictate() { const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; if (!Speech) return alert("Voice input is not available in this browser. Try Chrome on Android."); const recognition = new Speech(); recognition.lang = "en-IN"; recognition.onresult = (event: SpeechRecognitionEvent) => setText(event.results[0][0].transcript); recognition.start(); }
 
   return <main className="app">
+    <div className="side">
     <header className="hero">
       <div className="brand"><i>◒</i> ledgerly</div>
       <div className="balance-label">Balance</div>
@@ -76,6 +77,7 @@ export default function Home() {
       <button className="ghost small" onClick={() => setAdding(true)}><Plus size={15} /> Add money</button>
     </div>
     {notice && <div className="notice">{notice}<button onClick={() => setNotice("")}><X size={14} /></button></div>}
+    </div>
     <section className="list">
       <div className="list-head">
         <Search size={15} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search" />

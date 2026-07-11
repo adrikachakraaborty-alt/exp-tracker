@@ -54,3 +54,10 @@
 .danger{background:#fde8de;color:#a65336;margin-right:auto}
 
 @media(min-width:600px){.app{padding-top:32px}.modal-back{place-items:center}.modal{border-radius:20px}}
+@media(min-width:900px){
+.app{display:grid;grid-template-columns:400px minmax(0,1fr);gap:28px;align-items:start;max-width:1240px;padding-left:24px;padding-right:24px}
+.side{position:sticky;top:32px}
+.list{margin-top:0}
+.list .row{padding:14px 18px}
+.balance{font-size:44px}
+}
