@@ -75,7 +75,7 @@ export default function Home() {
       <div className="balance">{money.format(income - expense)}</div>
       <div className="inout"><span className="in">↓ {money.format(income)} in</span><span className="out">↑ {money.format(expense)} out</span></div>
       {pocket > 0 && <div className={`pocket ${alertAt != null && pocketLeft <= alertAt ? "low" : ""}`}>
-        <span>Pocket money · {new Date().toLocaleDateString("en-IN", { month: "long" })}</span>
+        <span>{alertAt != null && pocketLeft <= alertAt ? "Warning" : "You’re on the track"} · {new Date().toLocaleDateString("en-IN", { month: "long" })}</span>
         <strong>{money.format(pocketLeft)} left of {money.format(pocket)}</strong>
         <div className="bar"><i style={{ width: `${Math.max(0, Math.min(100, (pocketLeft / pocket) * 100))}%` }} /></div>
         <em>{alertAt != null && pocketLeft <= alertAt ? `⚠️ below your ${money.format(alertAt)} alert` : `Spent ${money.format(spentMonth)} · Saving ${money.format(Math.max(0, pocketLeft))} so far`}</em>
