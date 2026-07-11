@@ -8,6 +8,8 @@ create table if not exists public.transactions (
   type text not null check (type in ('income', 'expense')),
   amount numeric(12,2) not null check (amount > 0),
   note text check (char_length(note) <= 500),
+  is_starting boolean not null default false,
+  alert_below numeric(12,2),
   created_at timestamptz not null default now()
 );
 alter table public.transactions enable row level security;

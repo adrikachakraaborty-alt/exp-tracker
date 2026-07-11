@@ -15,8 +15,8 @@ function candidates() {
 
 export const configured = () => candidates().length > 0;
 
-export async function chat(messages: Message[], { maxTokens, temperature, timeoutMs }: { maxTokens: number; temperature: number; timeoutMs: number }): Promise<{ content?: string; error?: string }> {
-  let error = "No AI key is configured.";
+export async function chat(messages: Message[], { maxTokens, temperature, timeoutMs }: { maxTokens: number; temperature: number; timeoutMs: number }): Promise<{ content?: string; model?: string; error?: string }> {
+  const errors: string[] = [];
   for (const t of candidates()) {
     try {
       const response = await fetch(t.url, {
@@ -25,11 +25,12 @@ export async function chat(messages: Message[], { maxTokens, temperature, timeou
         headers: { Authorization: `Bearer ${t.key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model: t.model, temperature, max_tokens: maxTokens, messages })
       });
-      if (!response.ok) { error = `The AI service said no (${response.status}). ${(await response.text().catch(() => "")).slice(0, 300)}`; continue; }
+      if (!response.ok) { errors.push(`${t.model}: ${response.status} ${(await response.text().catch(() => "")).slice(0, 160)}`); continue; }
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
-      if (content) return { content };
-    } catch { error = "The AI is busy or unreachable right now. Try again in a minute."; }
+      if (content) return { content, model: t.model };
+      errors.push(`${t.model}: empty response`);
+    } catch (e) { errors.push(`${t.model}: ${e instanceof Error ? e.name : "failed"}`); }
   }
-  return { error };
+  return { error: errors.length ? errors.join(" | ") : "No AI key is configured." };
 }
