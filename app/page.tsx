@@ -78,7 +78,7 @@ export default function Home() {
         <span>Pocket money · {new Date().toLocaleDateString("en-IN", { month: "long" })}</span>
         <strong>{money.format(pocketLeft)} left of {money.format(pocket)}</strong>
         <div className="bar"><i style={{ width: `${Math.max(0, Math.min(100, (pocketLeft / pocket) * 100))}%` }} /></div>
-        <em>Spent {money.format(spentMonth)} · Saving {money.format(Math.max(0, pocketLeft))} so far{alertAt != null && pocketLeft <= alertAt && ` · ⚠️ below your ${money.format(alertAt)} alert`}</em>
+        <em>{alertAt != null && pocketLeft <= alertAt ? `⚠️ below your ${money.format(alertAt)} alert` : `Spent ${money.format(spentMonth)} · Saving ${money.format(Math.max(0, pocketLeft))} so far`}</em>
       </div>}
     </header>
     <form className="smartbar" onSubmit={submit}>
