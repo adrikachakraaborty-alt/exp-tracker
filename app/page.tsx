@@ -27,6 +27,21 @@ export default function Home() {
   const pocketLeft = pocket - spentMonth;
   const alertAt = pocketRows.map(x => x.alert_below).filter((v): v is number => v != null && v > 0).slice(-1)[0] ?? null;
 
+  // Insights: recent spend and all-time split by category.
+  const daysAgo = (n: number) => new Date(Date.now() - n * 864e5).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const spentSince = (since: string) => items.filter(x => x.type === "expense" && x.transaction_date >= since).reduce((s, x) => s + Number(x.amount), 0);
+  const spent7 = spentSince(daysAgo(6)); const spent30 = spentSince(daysAgo(29));
+  const catTotals = Object.entries(items.reduce<Record<string, number>>((m, x) => { if (x.type === "expense") m[x.category] = (m[x.category] || 0) + Number(x.amount); return m; }, {})).sort((a, b) => b[1] - a[1]);
+  const palette = ["#2a9d8f", "#e76f51", "#457b9d", "#f4a261", "#9b5de5", "#f15bb5", "#8ab17d", "#e63946", "#90a955", "#6c757d"];
+  const pie = (() => { let acc = 0; return catTotals.map(([, v], i) => { const from = (acc / expense) * 100; acc += v; return `${palette[i % palette.length]} ${from}% ${(acc / expense) * 100}%`; }).join(", "); })();
+
+  async function resetAll() {
+    if (!confirm("Delete ALL transactions permanently? This cannot be undone.")) return;
+    const { error } = await client.from("transactions").delete().gte("transaction_date", "1900-01-01");
+    if (error) setNotice("Couldn't reset. Check your internet and try again.");
+    else { setItems([]); setNotice("Everything deleted. Fresh start!"); }
+  }
+
   async function insert(t: Omit<Transaction, "id">) {
     const { data, error } = await client.from("transactions").insert(t).select().single();
     if (error || !data) { setNotice("Couldn't save that. Check your internet and try again."); return false; }
@@ -59,14 +74,13 @@ export default function Home() {
       <div className="balance-label">Balance</div>
       <div className="balance">{money.format(income - expense)}</div>
       <div className="inout"><span className="in">↓ {money.format(income)} in</span><span className="out">↑ {money.format(expense)} out</span></div>
-      {pocket > 0 && <div className="pocket">
+      {pocket > 0 && <div className={`pocket ${alertAt != null && pocketLeft <= alertAt ? "low" : ""}`}>
         <span>Pocket money · {new Date().toLocaleDateString("en-IN", { month: "long" })}</span>
         <strong>{money.format(pocketLeft)} left of {money.format(pocket)}</strong>
         <div className="bar"><i style={{ width: `${Math.max(0, Math.min(100, (pocketLeft / pocket) * 100))}%` }} /></div>
-        <em>Spent {money.format(spentMonth)} · Saving {money.format(Math.max(0, pocketLeft))} so far</em>
+        <em>Spent {money.format(spentMonth)} · Saving {money.format(Math.max(0, pocketLeft))} so far{alertAt != null && pocketLeft <= alertAt && ` · ⚠️ below your ${money.format(alertAt)} alert`}</em>
       </div>}
     </header>
-    {alertAt != null && pocketLeft <= alertAt && <div className="low-alert">⚠️ Pocket money is down to {money.format(pocketLeft)} — below your {money.format(alertAt)} alert. Go easy!</div>}
     <form className="smartbar" onSubmit={submit}>
       <input value={text} onChange={e => setText(e.target.value)} placeholder="Type it: ate a samosa, paid 15rs" disabled={busy} />
       <button type="button" className="round" title="Speak" onClick={dictate}><Mic size={18} /></button>
@@ -77,10 +91,21 @@ export default function Home() {
       <button className="ghost small" onClick={() => setAdding(true)}><Plus size={15} /> Add money</button>
     </div>
     {notice && <div className="notice">{notice}<button onClick={() => setNotice("")}><X size={14} /></button></div>}
+    {expense > 0 && <section className="insights">
+      <div className="spend-row">
+        <div><span>Last 7 days</span><strong>{money.format(spent7)}</strong></div>
+        <div><span>Last 30 days</span><strong>{money.format(spent30)}</strong></div>
+      </div>
+      <div className="pie-wrap">
+        <div className="pie" style={{ background: `conic-gradient(${pie})` }} />
+        <ul className="legend">{catTotals.map(([c, v], i) => <li key={c}><i style={{ background: palette[i % palette.length] }} />{c}<b>{money.format(v)} · {Math.round((v / expense) * 100)}%</b></li>)}</ul>
+      </div>
+    </section>}
     </div>
     <section className="list">
       <div className="list-head">
         <Search size={15} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search" />
+        {items.length > 0 && <button className="reset" onClick={resetAll}>Reset all</button>}
       </div>
       {visible.map(row => <button className="row" key={row.id} onClick={() => setEditing(row)}>
         <div className="row-main"><span className="desc">{row.is_starting ? "★ " : ""}{row.description}</span><span className="meta">{day(row.transaction_date)} · {row.category}</span></div>
