@@ -7,7 +7,7 @@
 .brand{font-family:Fraunces,serif;font-size:20px;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;color:#cfe2d6}.brand i{color:#b9e05f;font-style:normal}
 .balance-label{margin-top:16px;font-size:12px;text-transform:uppercase;letter-spacing:1.2px;color:#d9f0e9;font-weight:700}
 .balance{font-family:Fraunces,serif;font-size:38px;letter-spacing:-1px;margin:4px 0 10px}
-.inout{display:flex;gap:16px;font-size:13px;font-weight:600}.inout .in{color:#d5ed77}.inout .out{color:#f3b7a4}
+.inout{display:flex;gap:16px;font-size:13px;font-weight:600}.inout .in{color:#d5ed77}.inout .out{color:#990000}
 
 .pocket{margin-top:16px;background:#12332b;border-radius:12px;padding:12px 14px}
 .pocket span{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#9dbcae;font-weight:700}
