@@ -6,7 +6,9 @@ type Message = { role: string; content: string };
 function candidates() {
   const tries: { url: string; key: string; model: string }[] = [];
   const gemini = process.env.GEMINI_API_KEY;
-  if (gemini) tries.push({ url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", key: gemini, model: process.env.GEMINI_MODEL || "gemini-2.5-flash-lite" });
+  // Models before the 3.x family are closed to API keys created after March 2026.
+  if (gemini) for (const model of [process.env.GEMINI_MODEL || "gemini-3.1-flash-lite", "gemini-3.5-flash"])
+    tries.push({ url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", key: gemini, model });
   const openrouter = process.env.OPENROUTER_API_KEY;
   if (openrouter) for (const model of [process.env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free", "qwen/qwen3-next-80b-a3b-instruct:free", "meta-llama/llama-3.3-70b-instruct:free"])
     tries.push({ url: "https://openrouter.ai/api/v1/chat/completions", key: openrouter, model });
