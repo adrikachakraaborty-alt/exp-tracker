@@ -1,6 +1,6 @@
 # Ledgerly
 
-A private, mobile-friendly personal expense tracker. It has a spreadsheet-like transaction editor, email sign-in, speech-to-text entry for Chrome on Android, a PWA install experience, and an AI assistant powered by NVIDIA's Build API.
+A mobile-friendly personal expense tracker. It has a spreadsheet-like transaction editor, speech-to-text entry for Chrome on Android, a PWA install experience, and an AI assistant powered by NVIDIA's Build API. There is no sign-in: anyone who has the URL can view and edit the sheet, so keep the link to yourself.
 
 ## What you need
 
