@@ -15,11 +15,11 @@
 .pocket em{display:block;margin-top:7px;font-style:normal;font-size:12px;color:#b9cbc3}
 .bar{height:6px;border-radius:4px;background:#0b241e;overflow:hidden}
 .bar i{display:block;height:100%;background:#b9e05f;border-radius:4px}
-.pocket.low{background:#5c170d}
-.pocket.low span{color:#f3b7a4}
-.pocket.low .bar{background:#400f07}
-.pocket.low .bar i{background:#ff8f73}
-.pocket.low em{color:#f3c1ae}
+.pocket.low{background:#e0503c}
+.pocket.low span{color:#ffd8ce}
+.pocket.low .bar{background:#b93a28}
+.pocket.low .bar i{background:#fff3f0}
+.pocket.low em{color:#ffe3dc}
 .insights{margin-top:12px;background:#fff;border:1px solid #e2e8e4;border-radius:16px;padding:14px}
 .spend-row{display:flex;gap:10px}
 .spend-row>div{flex:1;background:#f5f8f4;border-radius:10px;padding:10px 12px}
