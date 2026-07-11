@@ -7,7 +7,7 @@ There is no sign-in: anyone who has the URL can view and edit the sheet, so keep
 ## What you need
 
 - A [Supabase](https://supabase.com) account (free tier is fine)
-- A [Build NVIDIA](https://build.nvidia.com) API key — the default free model is `meta/llama-3.2-3b-instruct`
+- An [OpenRouter](https://openrouter.ai) API key — the default free model is `google/gemma-4-31b-it:free`
 - A [Vercel](https://vercel.com) account
 - Node.js 20.9 or newer
 
@@ -25,8 +25,8 @@ There is no sign-in: anyone who has the URL can view and edit the sheet, so keep
 3. Add these Environment Variables in Vercel (for Production, Preview, and Development):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NVIDIA_API_KEY`
-   - `NVIDIA_MODEL` (optional; defaults to `meta/llama-3.2-3b-instruct`)
+   - `OPENROUTER_API_KEY`
+   - `OPENROUTER_MODEL` (optional; defaults to `google/gemma-4-31b-it:free`)
 4. Deploy. Every later push to `main` deploys automatically.
 5. In the Vercel project, set **Settings → Deployment Protection → Vercel Authentication** to **Disabled** so the site opens without a Vercel login.
 
@@ -36,6 +36,6 @@ Open the deployed site in Chrome. Tap the browser menu, then **Install app** (or
 
 ## AI and privacy
 
-`NVIDIA_API_KEY` is only read on the server (`app/api/ai/route.ts` and `app/api/parse/route.ts`). It is never sent to your phone/browser. When you add or ask something, the text (and for questions, the newest 100 transactions) is sent to NVIDIA's API to be processed.
+`OPENROUTER_API_KEY` is only read on the server (`app/api/ai/route.ts` and `app/api/parse/route.ts`). It is never sent to your phone/browser. When you add or ask something, the text (and for questions, the newest 100 transactions) is sent to OpenRouter to be processed.
 
-NVIDIA's Build catalog provides the OpenAI-compatible endpoint at `https://integrate.api.nvidia.com/v1`. If the selected free model changes availability, change only `NVIDIA_MODEL` in Vercel.
+OpenRouter provides the OpenAI-compatible endpoint at `https://openrouter.ai/api/v1`. If the selected free model changes availability, change only `OPENROUTER_MODEL` in Vercel.
