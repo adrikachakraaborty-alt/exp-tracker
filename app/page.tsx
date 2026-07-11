@@ -120,21 +120,25 @@ export default function Home() {
   </main>;
 }
 
+// Collapse "I I bought bought a a" -> "I bought a" (Android Chrome stutter).
+const dedupe = (s: string) => s.replace(/\s+/g, " ").replace(/\b(\S+)(?: \1\b)+/gi, "$1").trim();
+
 function MicModal({ onDone, onClose }: { onDone: (text: string) => void; onClose: () => void }) {
-  const [finalText, setFinalText] = useState(""); const [interim, setInterim] = useState("");
-  const alive = useRef(true);
+  const [view, setView] = useState("");
+  const alive = useRef(true); const doneSess = useRef(""); const sess = useRef("");
   useEffect(() => {
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Speech) { onClose(); return; }
     const rec = new Speech();
-    rec.lang = "en-IN"; rec.continuous = true; rec.interimResults = true;
-    rec.onresult = e => { let f = "", i = ""; for (let k = 0; k < e.results.length; k++) { const r = e.results[k]; if (r.isFinal) f += r[0].transcript + " "; else i += r[0].transcript; } setFinalText(f); setInterim(i); };
-    // Chrome stops listening after a pause; restart until the user closes the popup.
-    rec.onend = () => { if (alive.current) try { rec.start(); } catch {} };
+    // continuous mode duplicates words on Android Chrome, so listen in short
+    // sessions and stitch them together across restarts.
+    rec.lang = "en-IN"; rec.continuous = false; rec.interimResults = true;
+    rec.onresult = e => { let f = "", i = ""; for (let k = 0; k < e.results.length; k++) { const r = e.results[k]; if (r.isFinal) f += r[0].transcript + " "; else i += r[0].transcript + " "; } sess.current = f; setView(dedupe(`${doneSess.current} ${f} ${i}`)); };
+    rec.onend = () => { if (!alive.current) return; doneSess.current = dedupe(`${doneSess.current} ${sess.current}`); sess.current = ""; setView(doneSess.current); try { rec.start(); } catch {} };
     try { rec.start(); } catch {}
     return () => { alive.current = false; rec.onend = null; try { rec.stop(); } catch {} };
   }, [onClose]);
-  const text = (finalText + interim).trim();
+  const text = view;
   return <div className="modal-back"><div className="modal">
     <h2><span className="mic-dot" /> Listening…</h2>
     <p>Speak your transaction. Tap OK when you’re done.</p>
