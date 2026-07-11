@@ -47,8 +47,8 @@ export default function Home() {
     if (error || !data) { setNotice("Couldn't save that. Check your internet and try again."); return false; }
     setItems(old => [data as Transaction, ...old]); return true;
   }
-  async function submit(e?: React.FormEvent) {
-    e?.preventDefault(); const t = text.trim(); if (!t || busy) return;
+  async function submit(e?: React.FormEvent, override?: string) {
+    e?.preventDefault(); const t = (override ?? text).trim(); if (!t || busy) return;
     setBusy(true); setNotice("");
     try {
       if (t.endsWith("?")) {
@@ -116,7 +116,7 @@ export default function Home() {
     </section>
     {editing && <EditModal item={editing} onClose={() => setEditing(null)} onSave={saveEdit} onDelete={remove} />}
     {adding && <AddMoneyModal onClose={() => setAdding(false)} onAdd={async t => { if (await insert(t)) setAdding(false); }} />}
-    {mic && <MicModal onDone={t => { if (t) setText(t); setMic(false); }} onClose={() => setMic(false)} />}
+    {mic && <MicModal onDone={t => { setMic(false); if (t) { setText(t); submit(undefined, t); } }} onClose={() => setMic(false)} />}
   </main>;
 }
 
