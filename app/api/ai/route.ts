@@ -19,7 +19,7 @@ export async function POST(request: Request) {
         { role: "user", content: `My question: ${prompt.slice(0, 500)}\n\nTransactions (JSON): ${JSON.stringify(context)}` }
       ] })
     });
-    if (!response.ok) return NextResponse.json({ error: "The AI service could not answer right now." }, { status: 502 });
+    if (!response.ok) { const detail = (await response.text().catch(() => "")).slice(0, 300); return NextResponse.json({ error: `The AI service said no (${response.status}). ${detail}` }, { status: 502 }); }
     const data = await response.json();
     return NextResponse.json({ answer: data.choices?.[0]?.message?.content ?? "No response received." });
   } catch {
