@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Mic, Plus, Search, Send, Trash2, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { categories, Transaction } from "@/lib/types";
@@ -11,7 +11,7 @@ const day = (iso: string) => { const today = todayIST(); const yesterday = new D
 export default function Home() {
   const [items, setItems] = useState<Transaction[]>([]); const [loading, setLoading] = useState(true);
   const [text, setText] = useState(""); const [busy, setBusy] = useState(false); const [notice, setNotice] = useState("");
-  const [query, setQuery] = useState(""); const [editing, setEditing] = useState<Transaction | null>(null); const [adding, setAdding] = useState(false);
+  const [query, setQuery] = useState(""); const [editing, setEditing] = useState<Transaction | null>(null); const [adding, setAdding] = useState(false); const [mic, setMic] = useState(false);
   const client = useMemo(() => supabase(), []);
   async function load() { setLoading(true); const { data } = await client.from("transactions").select("*").order("transaction_date", { ascending: false }).order("created_at", { ascending: false }); setItems((data as Transaction[]) || []); setLoading(false); }
   useEffect(() => { load(); }, [client]);
@@ -65,7 +65,7 @@ export default function Home() {
   }
   async function saveEdit(t: Transaction) { setItems(xs => xs.map(x => x.id === t.id ? t : x)); setEditing(null); const { error } = await client.from("transactions").update({ transaction_date: t.transaction_date, description: t.description, category: t.category, type: t.type, amount: t.amount, note: t.note, is_starting: t.type === "income" && !!t.is_starting, alert_below: t.is_starting ? t.alert_below ?? null : null }).eq("id", t.id); if (error) { setNotice("That edit didn't save — showing the sheet as it is on the server."); load(); } }
   async function remove(id: string) { setItems(xs => xs.filter(x => x.id !== id)); setEditing(null); const { error } = await client.from("transactions").delete().eq("id", id); if (error) { setNotice("Couldn't delete that one — showing the sheet as it is on the server."); load(); } }
-  function dictate() { const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; if (!Speech) return alert("Voice input is not available in this browser. Try Chrome on Android."); const recognition = new Speech(); recognition.lang = "en-IN"; recognition.onresult = (event: SpeechRecognitionEvent) => setText(event.results[0][0].transcript); recognition.start(); }
+  function dictate() { if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) return alert("Voice input is not available in this browser. Try Chrome on Android."); setMic(true); }
 
   return <main className="app">
     <div className="side">
@@ -116,7 +116,34 @@ export default function Home() {
     </section>
     {editing && <EditModal item={editing} onClose={() => setEditing(null)} onSave={saveEdit} onDelete={remove} />}
     {adding && <AddMoneyModal onClose={() => setAdding(false)} onAdd={async t => { if (await insert(t)) setAdding(false); }} />}
+    {mic && <MicModal onDone={t => { if (t) setText(t); setMic(false); }} onClose={() => setMic(false)} />}
   </main>;
+}
+
+function MicModal({ onDone, onClose }: { onDone: (text: string) => void; onClose: () => void }) {
+  const [finalText, setFinalText] = useState(""); const [interim, setInterim] = useState("");
+  const alive = useRef(true);
+  useEffect(() => {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Speech) { onClose(); return; }
+    const rec = new Speech();
+    rec.lang = "en-IN"; rec.continuous = true; rec.interimResults = true;
+    rec.onresult = e => { let f = "", i = ""; for (let k = 0; k < e.results.length; k++) { const r = e.results[k]; if (r.isFinal) f += r[0].transcript + " "; else i += r[0].transcript; } setFinalText(f); setInterim(i); };
+    // Chrome stops listening after a pause; restart until the user closes the popup.
+    rec.onend = () => { if (alive.current) try { rec.start(); } catch {} };
+    try { rec.start(); } catch {}
+    return () => { alive.current = false; rec.onend = null; try { rec.stop(); } catch {} };
+  }, [onClose]);
+  const text = (finalText + interim).trim();
+  return <div className="modal-back"><div className="modal">
+    <h2><span className="mic-dot" /> Listening…</h2>
+    <p>Speak your transaction. Tap OK when you’re done.</p>
+    <div className="transcript">{text || <span className="placeholder">e.g. “ate a samosa, paid 15 rupees”</span>}</div>
+    <div className="modal-actions">
+      <button type="button" className="ghost" onClick={onClose}>Cancel</button>
+      <button type="button" className="primary" onClick={() => onDone(text)}>OK</button>
+    </div>
+  </div></div>;
 }
 
 function StartingFields({ starting, alert, onStarting, onAlert }: { starting: boolean; alert: string; onStarting: (v: boolean) => void; onAlert: (v: string) => void }) {

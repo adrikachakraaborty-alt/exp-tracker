@@ -32,6 +32,10 @@
 .legend i{width:10px;height:10px;border-radius:3px;flex:none}
 .legend b{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
 .reset{border:0;background:transparent;color:#a65336;font-size:12px;font-weight:700;padding:4px 6px;flex:none}
+.transcript{margin-top:6px;min-height:64px;background:#f5f8f4;border:1px solid #dfe6e1;border-radius:10px;padding:11px 13px;font-size:15px;line-height:1.5}
+.transcript .placeholder{color:#8fa39a}
+.mic-dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#d43d3d;margin-right:6px;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .hint-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .ghost.small{padding:7px 11px;font-size:13px;flex:none;margin-top:8px}
 .check{display:flex;gap:9px;align-items:center;font-size:13px;color:#395149;font-weight:600}
